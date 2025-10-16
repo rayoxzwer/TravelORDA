@@ -513,11 +513,11 @@
         // Only now capture pointer for horizontal drag
         try { slidesEl.setPointerCapture(e.pointerId); } catch (err) {}
       } else {
-        // For vertical gesture, do not capture pointer, let browser handle scroll
+        // For vertical gesture, IMMEDIATELY end dragging and let browser handle scroll
         dragging = false;
         axisLocked = false;
         isHorizontal = false;
-        slidesEl.style.transform = `translateX(${startTrans}px)`;
+        slidesEl.style.transform = `translateX(${-current * slidesEl.clientWidth}px)`;
         return;
       }
     }
