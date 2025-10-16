@@ -501,8 +501,8 @@
     if (!dragging) return;
     dragging = false;
     const dx = e.clientX - startX;
-    if (Math.abs(dx) > slidesEl.clientHeight / 4) {
-      if (dx < 0) goTo(current + 1);
+    if (Math.abs(dx) > slidesEl.clientWidth / 4) {
+      if (dx < 0) goTo(current);
       else goTo(current - 1);
     } else {
       buildActive(current, false);
