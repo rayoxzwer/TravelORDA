@@ -483,35 +483,103 @@
 
   window.addEventListener('resize', () => buildActive(current, true));
 
-  let dragging = false, startX = 0, startTrans = 0;
+  // improved pointer handling: detect initial gesture axis (horizontal vs vertical)
+  // so vertical scrolling inside a slide doesn't switch slides.
+  let dragging = false, startX = 0, startY = 0, startTrans = 0;
+  let axisLocked = false, isHorizontal = false;
+
   slidesEl.addEventListener('pointerdown', (e) => {
     dragging = true;
+    axisLocked = false;
+    isHorizontal = false;
     startX = e.clientX;
+    startY = e.clientY;
     startTrans = -current * slidesEl.clientWidth;
     slidesEl.style.transition = 'none';
     slidesEl.setPointerCapture(e.pointerId);
   });
+
   slidesEl.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - startX;
-    slidesEl.style.transform = `translateX(${startTrans + dx}px)`;
-  });
+    const dy = e.clientY - startY;
 
-  slidesEl.addEventListener('pointerup', endDrag);
-  slidesEl.releasePointerCapture(e.pointerId);
-  });
+    // wait for a small movement to determine axis
+    if (!axisLocked) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // ignore tiny jitter
+      axisLocked = true;
+      isHorizontal = Math.abs(dx) > Math.abs(dy);
+      // if vertical gesture, cancel dragging and let native scroll happen
+      if (!isHorizontal) {
+        dragging = false;
+        slidesEl.style.transform = `translateX(${startTrans}px)`;
+        try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
+        return;
+      }
+    }
 
-  slidesEl.addEventListener('pointercancel', endDrag);
-  slidesEl.addEventListener('pointerleave', endDrag);
-  function endDrag(e) {
-    if (!dragging) return;
+    if (isHorizontal) {
+      // prevent native behavior when handling horizontal swipe
+      e.preventDefault();
+      slidesEl.style.transform = `translateX(${startTrans + dx}px)`;
+    }
+  }, { passive: false });
+
+  slidesEl.addEventListener('pointerup', (e) => {
+    if (!dragging && !axisLocked) {
+      // nothing to do (likely vertical gesture canceled our drag)
+      try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
+      return;
+    }
+    // if axis wasn't locked yet and pointer is released, treat as no-op
+    if (!axisLocked) {
+      buildActive(current, false);
+      try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
+      dragging = false;
+      return;
+    }
+
+    // only consider horizontal gestures for slide change
+    if (isHorizontal) {
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > slidesEl.clientWidth / 4) {
+        if (dx < 0) goTo(current + 1);
+        else goTo(current - 1);
+      } else {
+        buildActive(current, false);
+      }
+    } else {
+      buildActive(current, false);
+    }
+
     dragging = false;
+    axisLocked = false;
+    try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+
+  slidesEl.addEventListener('pointercancel', (e) => {
+    // similar cleanup as pointerup
+    dragging = false;
+    axisLocked = false;
+    buildActive(current, false);
+    try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+
+  slidesEl.addEventListener('pointerleave', (e) => {
+    // when leaving, if we were processing a horizontal drag, finalize it
+    if (!axisLocked || !isHorizontal) {
+      dragging = false;
+      axisLocked = false;
+      return;
+    }
     const dx = e.clientX - startX;
     const threshold = slidesEl.clientWidth * 0.18;
     if (dx < -threshold) buildActive(current + 1, false);
     else if (dx > threshold) buildActive(current - 1, false);
     else buildActive(current, false);
-  }
+    dragging = false;
+    axisLocked = false;
+  });
 
   langBtn.addEventListener('click', () => {
     DATA.lang = DATA.lang === 'kk' ? 'ru' : 'kk';
