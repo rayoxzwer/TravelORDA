@@ -496,7 +496,7 @@
     startY = e.clientY;
     startTrans = -current * slidesEl.clientWidth;
     slidesEl.style.transition = 'none';
-    slidesEl.setPointerCapture(e.pointerId);
+    // Do NOT capture pointer yet; only do so if axis is horizontal
   });
 
   slidesEl.addEventListener('pointermove', (e) => {
@@ -509,11 +509,15 @@
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // ignore tiny jitter
       axisLocked = true;
       isHorizontal = Math.abs(dx) > Math.abs(dy);
-      // if vertical gesture, cancel dragging and let native scroll happen
-      if (!isHorizontal) {
+      if (isHorizontal) {
+        // Only now capture pointer for horizontal drag
+        try { slidesEl.setPointerCapture(e.pointerId); } catch (err) {}
+      } else {
+        // For vertical gesture, do not capture pointer, let browser handle scroll
         dragging = false;
+        axisLocked = false;
+        isHorizontal = false;
         slidesEl.style.transform = `translateX(${startTrans}px)`;
-        try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
         return;
       }
     }
@@ -528,13 +532,11 @@
   slidesEl.addEventListener('pointerup', (e) => {
     if (!dragging && !axisLocked) {
       // nothing to do (likely vertical gesture canceled our drag)
-      try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
       return;
     }
     // if axis wasn't locked yet and pointer is released, treat as no-op
     if (!axisLocked) {
       buildActive(current, false);
-      try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
       dragging = false;
       return;
     }
@@ -548,13 +550,13 @@
       } else {
         buildActive(current, false);
       }
+      try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
     } else {
       buildActive(current, false);
     }
 
     dragging = false;
     axisLocked = false;
-    try { slidesEl.releasePointerCapture(e.pointerId); } catch (err) {}
   });
 
   slidesEl.addEventListener('pointercancel', (e) => {
