@@ -501,7 +501,7 @@
     if (!dragging) return;
     dragging = false;
     const dx = e.clientX - startX;
-    if (Math.abs(dx) > slidesEl.clientWidth / 4) {
+    if (Math.abs(dx) > slidesEl.clientHeight / 4) {
       if (dx < 0) goTo(current + 1);
       else goTo(current - 1);
     } else {
@@ -535,31 +535,7 @@
   });
 
   buildUI();
-  let startY = 0, isScrolling = false;
-  startX = 0;
-
-  slidesEl.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    startX = t.clientX;
-    startY = t.clientY;
-    isScrolling = false;
-  }, { passive: true });
-
-  slidesEl.addEventListener('touchmove', e => {
-    const t = e.touches[0];
-    const dx = Math.abs(t.clientX - startX);
-    const dy = Math.abs(t.clientY - startY);
-
-    // If vertical swipe is greater, disable horizontal transform
-    if (dy > dx && !isScrolling) {
-        isScrolling = true;
-        slidesEl.style.transition = 'none';
-    }
-  }, { passive: true });
-
-  slidesEl.addEventListener('touchend', () => {
-    slidesEl.style.transition = '';
-  });
+  
 })();
 </script>
 <script>
