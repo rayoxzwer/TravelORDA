@@ -90,7 +90,7 @@
       position: relative;
       border-radius: 14px;
       overflow: hidden;
-      height: 700px;
+      height: 100%;
       min-height: 420px;
       background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.99));
       box-shadow: var(--shadow);
@@ -535,6 +535,31 @@
   });
 
   buildUI();
+  let startY = 0, isScrolling = false;
+  startX = 0;
+
+  slidesEl.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    isScrolling = false;
+  }, { passive: true });
+
+  slidesEl.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    const dx = Math.abs(t.clientX - startX);
+    const dy = Math.abs(t.clientY - startY);
+
+    // If vertical swipe is greater, disable horizontal transform
+    if (dy > dx && !isScrolling) {
+        isScrolling = true;
+        slidesEl.style.transition = 'none';
+    }
+  }, { passive: true });
+
+  slidesEl.addEventListener('touchend', () => {
+    slidesEl.style.transition = '';
+  });
 })();
 </script>
 <script>
