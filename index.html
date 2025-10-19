@@ -18,6 +18,34 @@
       to { transform: translateY(-20px); }
     }
     @media (max-width: 600px) {
+  .sidebar-close-btn {
+    display: block !important;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #fff;
+    border: none;
+    font-size: 24px;
+    z-index: 1104;
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    width: 40px;
+    height: 40px;
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.18);
+    z-index: 1000;
+  }
+  .sidebar.open ~ .sidebar-overlay {
+    display: block;
+  }
   body {
     padding: 0;
     margin: 0;
@@ -279,34 +307,6 @@
       .title {
         text-align: center;
       }
-      .sidebar-close-btn {
-      display: block !important;
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: #fff;
-      border: none;
-      font-size: 24px;
-      z-index: 1104;
-      cursor: pointer;
-      border-radius: 50%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      width: 40px;
-      height: 40px;
-    }
-    .sidebar-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.18);
-      z-index: 1000;
-    }
-    .sidebar.open ~ .sidebar-overlay {
-      display: block;
-    }
     }
     .nav { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
     .nav-btn { padding:10px 12px; border-radius:8px; border:none; background:transparent; cursor:pointer; font-weight:700; color:var(--muted); text-align:left; }
@@ -487,7 +487,7 @@
     <div class="welcome-content">
       <video class="welcome-video" src="https://www.youtube.com/watch?v=g-0JwxW9TLQ" autoplay muted playsinline loop></video>
       <h1>Қызылорда облысының<br>туристік гиді</h1>
-      <button class="welcome-btn">Жалғастыру</button>
+      <button class="welcome-btn" id="welcomeContinueBtn"></button>
     </div>
   </div>
 
@@ -495,20 +495,20 @@
 
   <div class="root-wrap">
     <aside class="sidebar" id="sidebar">
-      <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar" style="display:none">✕</button>
+  <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar">✕</button>
       <div class="nav">
-        <button class="nav-btn active" data-view="main">Басты бет</button>
-        <button class="nav-btn" data-view="planner">Жоспар</button>
+  <button class="nav-btn active" data-view="main" id="navMainBtn"></button>
+        <button class="nav-btn" data-view="planner" id="navPlannerBtn"></button>
       </div>
       <div class="planner-panel" id="plannerPanel">
-        <h3>Менің жоспарым</h3>
-        <div id="plannerDrops" class="planner-drops">Таңдаған орындарды осы жерге сүйреңіз</div>
+        <h3 id="plannerTitle"></h3>
+        <div id="plannerDrops" class="planner-drops"></div>
         <div class="planner-actions">
-          <button id="clearPlanner" class="small-btn">Тазалау</button>
+          <button id="clearPlanner" class="small-btn"></button>
         </div>
       </div>
     </aside>
-    <div class="sidebar-overlay" id="sidebarOverlay" style="display:none"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <main class="content-area">
       <div class="app" id="app">
@@ -739,7 +739,7 @@
                 <button class="desc-more-btn" onclick="this.previousElementSibling.style.display='inline'; this.style.display='none'; this.parentElement.querySelector('.desc-short').style.display='none';">Толығырақ</button>
               </div>
               <div class="badge">${item.badge ? item.badge[DATA.lang] : ''}</div>
-              <button class="add-to-planner" data-section="${idx}" data-item="${itemIdx}">Жоспарға қосу</button>
+              <button class="add-to-planner" data-section="${idx}" data-item="${itemIdx}">${DATA.lang === 'kk' ? 'Жоспарға қосу' : 'Добавить в планировщик'}</button>
               <a href="${item.mapLink[DATA.lang]}" class="map-link" target="_blank" rel="noopener noreferrer">
                 📍 ${DATA.lang === 'kk' ? 'Картаны ашу' : 'Открыть карту'}
               </a>
@@ -764,27 +764,6 @@
     buildActive(0, true);
   }
 
-  const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-  const navMainBtn = document.querySelector('.nav-btn[data-view="main"]');
-
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    sidebarOverlay.style.display = 'none';
-    sidebarCloseBtn.style.display = 'none';
-  }
-
-  sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-    if (window.innerWidth <= 600) {
-      sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
-      sidebarCloseBtn.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
-    }
-  });
-
-sidebarCloseBtn.addEventListener('click', closeSidebar);
-sidebarOverlay.addEventListener('click', closeSidebar);
-navMainBtn.addEventListener('click', closeSidebar);
   // Drag & drop handlers for planner
   function setupDragHandlers() {
     // draggable place cards
@@ -819,8 +798,20 @@ navMainBtn.addEventListener('click', closeSidebar);
   function renderPlanner() {
     const container = document.getElementById('plannerDrops');
     const list = loadPlanner();
-    if (!list.length) { container.innerHTML = 'Таңдаған орындарды осы жерге сүйреңіз'; return; }
-    container.innerHTML = list.map((it, idx) => `<div class="planner-item" data-idx="${idx}"><div>${it.title}</div><button class="small-btn remove-planner" data-idx="${idx}">Жою</button></div>`).join('');
+    if (!list.length) { 
+      container.innerHTML = DATA.lang === 'kk' 
+        ? 'Таңдаған орындарды осы жерге сүйреңіз'
+        : 'Перетащите выбранные места сюда';
+      return; 
+    }
+    container.innerHTML = list.map((it, idx) => 
+      `<div class="planner-item" data-idx="${idx}">
+        <div>${it.title}</div>
+        <button class="small-btn remove-planner" data-idx="${idx}">
+          ${DATA.lang === 'kk' ? 'Жою' : 'Удалить'}
+        </button>
+      </div>`
+    ).join('');
     container.querySelectorAll('.remove-planner').forEach(b => b.addEventListener('click', (e) => {
       const idx = Number(b.dataset.idx); const list = loadPlanner(); list.splice(idx,1); savePlanner(list); renderPlanner();
     }));
@@ -986,11 +977,33 @@ navMainBtn.addEventListener('click', closeSidebar);
     axisLocked = false;
   });
 
+  function updateBilingualUI() {
+    // Sidebar navigation
+    document.getElementById('navMainBtn').textContent = DATA.lang === 'kk' ? 'Басты бет' : 'Главная';
+    document.getElementById('navPlannerBtn').textContent = DATA.lang === 'kk' ? 'Жоспар' : 'Планировщик';
+
+    // Planner panel
+    document.getElementById('plannerTitle').textContent = DATA.lang === 'kk' ? 'Менің жоспарым' : 'Мой план';
+    document.getElementById('clearPlanner').textContent = DATA.lang === 'kk' ? 'Тазалау' : 'Очистить';
+
+    // Welcome overlay button
+    document.getElementById('welcomeContinueBtn').textContent = DATA.lang === 'kk' ? 'Жалғастыру' : 'Продолжить';
+
+    // Planner drops empty text
+    const plannerDrops = document.getElementById('plannerDrops');
+    if (!loadPlanner().length) {
+      plannerDrops.textContent = DATA.lang === 'kk'
+        ? 'Таңдаған орындарды осы жерге қосыңыз'
+        : 'Добавьте выбранные места сюда';
+    }
+  }
+
   langBtn.addEventListener('click', () => {
     DATA.lang = DATA.lang === 'kk' ? 'ru' : 'kk';
     langLabel.innerText = DATA.lang === 'kk' ? 'ҚАЗ' : 'РУС';
     langBtn.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(180deg)' }], { duration: 200 });
     buildUI();
+    updateBilingualUI();
     setupDescExpanders();
     setupDragHandlers();
     setupAddButtons();
@@ -1071,6 +1084,7 @@ navMainBtn.addEventListener('click', closeSidebar);
   }
 
   buildUI();
+  updateBilingualUI();
   setupDescExpanders();
   setupDragHandlers();
   renderPlanner();
@@ -1098,5 +1112,16 @@ navMainBtn.addEventListener('click', closeSidebar);
   setupDragHandlers();
   renderPlanner();
 })();
+  const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const navMainBtn = document.getElementById('navMainBtn');
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+  }
+
+  sidebarCloseBtn.addEventListener('click', closeSidebar);
+  sidebarOverlay.addEventListener('click', closeSidebar);
+  navMainBtn.addEventListener('click', closeSidebar);
 </script>
 <!-- Removed stray CSS/script block -->
