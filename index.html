@@ -162,6 +162,22 @@
       color: var(--muted); font-size:14px;
       line-height:1.45;
     }
+    /* Sidebar / planner styles */
+    .root-wrap { display:flex; min-height:100vh; }
+    .sidebar {
+      width: 240px; background: #fff; border-right: 1px solid #eef2f6;
+      padding: 16px; box-shadow: 2px 0 12px rgba(10,14,30,0.02);
+    }
+    .nav { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+    .nav-btn { padding:10px 12px; border-radius:8px; border:none; background:transparent; cursor:pointer; font-weight:700; color:var(--muted); text-align:left; }
+    .nav-btn.active { background: linear-gradient(90deg,#f3f7ff,#eef5ff); color:var(--accent); }
+    .planner-panel h3 { margin:6px 0 8px; color:var(--accent); }
+    .planner-drops { min-height:180px; border:2px dashed #e6eefb; border-radius:10px; padding:10px; background:#fbfdff; }
+    .planner-item { padding:8px 10px; border-radius:8px; background:#fff; margin-bottom:8px; box-shadow:0 2px 6px rgba(10,14,30,0.04); display:flex; justify-content:space-between; gap:8px; }
+    .small-btn { padding:6px 10px; border-radius:8px; border:none; background:#f3f5fb; cursor:pointer; }
+    .content-area { flex:1; }
+    .place-card { cursor: grab; }
+    .place-card:active { cursor: grabbing; }
     .badge {
       margin-top:10px;
       display: inline-block;
@@ -562,9 +578,10 @@
       slide.className = 'slide';
       slide.dataset.index = idx;
       let inner = '';
-      sec.items.forEach(item => {
+      sec.items.forEach((item, itemIdx) => {
+        // make each place-card draggable with data attributes
         inner += `
-          <article class="place-card">
+          <article class="place-card" draggable="true" data-section="${idx}" data-item="${itemIdx}">
             <img class="place-image" src="${item.img}" alt="${item.title[DATA.lang]}">
             <div class="place-body">
               <div class="place-title">${item.title[DATA.lang]}</div>
@@ -584,6 +601,8 @@
       slide.innerHTML = inner;
       slidesEl.appendChild(slide);
 
+  // attach dragstart listeners after DOM insertion (will be setup in setupDragHandlers)
+
       // dot
       const dot = document.createElement('div');
       dot.className = 'dot' + (idx === 0 ? ' active' : '');
@@ -595,6 +614,67 @@
     subtitleEl.innerText = DATA.lang === 'kk' ? 'Қызылорда облысы' : 'Кызылординская область';
     buildActive(0, true);
   }
+
+  // Drag & drop handlers for planner
+  function setupDragHandlers() {
+    // draggable place cards
+    document.querySelectorAll('.place-card[draggable="true"]').forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        const s = card.dataset.section;
+        const i = card.dataset.item;
+        e.dataTransfer.setData('text/plain', JSON.stringify({ section: s, item: i }));
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+    });
+
+    const plannerDrops = document.getElementById('plannerDrops');
+    plannerDrops.addEventListener('dragover', (e) => { e.preventDefault(); plannerDrops.classList.add('drag-over'); });
+    plannerDrops.addEventListener('dragleave', (e) => { plannerDrops.classList.remove('drag-over'); });
+    plannerDrops.addEventListener('drop', (e) => {
+      e.preventDefault(); plannerDrops.classList.remove('drag-over');
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const sec = DATA.sections[Number(data.section)];
+        const item = sec.items[Number(data.item)];
+        addPlannerItem({ sectionId: sec.id, title: item.title[DATA.lang], desc: item.desc[DATA.lang] });
+      } catch (err) { console.error('drop parse error', err); }
+    });
+  }
+
+  const PLANNER_KEY = 'travelorda_planner_v1';
+  function loadPlanner() {
+    const raw = localStorage.getItem(PLANNER_KEY); try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+  }
+  function savePlanner(list) { localStorage.setItem(PLANNER_KEY, JSON.stringify(list)); }
+  function renderPlanner() {
+    const container = document.getElementById('plannerDrops');
+    const list = loadPlanner();
+    if (!list.length) { container.innerHTML = 'Таңдаған орындарды осы жерге сүйреңіз'; return; }
+    container.innerHTML = list.map((it, idx) => `<div class="planner-item" data-idx="${idx}"><div>${it.title}</div><button class="small-btn remove-planner" data-idx="${idx}">Жою</button></div>`).join('');
+    container.querySelectorAll('.remove-planner').forEach(b => b.addEventListener('click', (e) => {
+      const idx = Number(b.dataset.idx); const list = loadPlanner(); list.splice(idx,1); savePlanner(list); renderPlanner();
+    }));
+  }
+  function addPlannerItem(item) {
+    const list = loadPlanner(); list.push(item); savePlanner(list); renderPlanner();
+  }
+
+  document.getElementById('clearPlanner').addEventListener('click', () => { localStorage.removeItem(PLANNER_KEY); renderPlanner(); });
+
+  // sidebar nav
+  document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const view = b.dataset.view;
+    if (view === 'planner') {
+      // open planner page
+      window.location.href = 'planner.html';
+      return;
+    }
+    document.querySelector('.content-area').style.display = 'block';
+    document.getElementById('plannerPanel').style.display = 'none';
+  }));
+
 
   let current = 0;
   function slidesCount() { return DATA.sections.length; }
@@ -742,6 +822,7 @@
     langBtn.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(180deg)' }], { duration: 200 });
     buildUI();
     setupDescExpanders();
+    setupDragHandlers();
   });
 
   window.addEventListener('keydown', (e) => {
@@ -775,6 +856,8 @@
 
   buildUI();
   setupDescExpanders();
+  setupDragHandlers();
+  renderPlanner();
 })();
 </script>
 <!-- Removed stray CSS/script block -->
