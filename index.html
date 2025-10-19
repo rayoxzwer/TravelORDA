@@ -231,6 +231,41 @@
     .sidebar {
       width: 240px; background: #fff; border-right: 1px solid #eef2f6;
       padding: 16px; box-shadow: 2px 0 12px rgba(10,14,30,0.02);
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 1001;
+      transition: transform .28s ease, width .28s ease;
+      transform: translateX(-100%);
+      border-radius: 0 12px 12px 0;
+      overflow-y: auto;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    @media (max-width: 600px) {
+      .sidebar {
+        width: 80vw;
+        max-width: 350px;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+      }
+      .topbar {
+        position: relative;
+        z-index: 1102;
+        background: #fff;
+      }
+      .sidebar-toggle {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1103;
+      }
+      .brand {
+        position: relative;
+        z-index: 1102;
+        background: #fff;
+      }
     }
     .nav { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
     .nav-btn { padding:10px 12px; border-radius:8px; border:none; background:transparent; cursor:pointer; font-weight:700; color:var(--muted); text-align:left; }
@@ -244,7 +279,7 @@
     .place-card:active { cursor: grabbing; }
   .add-to-planner { margin-top:8px; display:inline-block; background:linear-gradient(90deg,#2a5298,#1e3c72); color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; }
   .sidebar { transition: transform .28s ease, width .28s ease; }
-  .root-wrap.sidebar-closed .sidebar { transform: translateX(-100%); }
+  /* Removed .root-wrap.sidebar-closed .sidebar, now use .sidebar.open for visibility */
   .sidebar-toggle { background: transparent; border: none; font-size:20px; cursor: pointer; padding:6px; margin-right:8px; }
     .badge {
       margin-top:10px;
@@ -978,10 +1013,10 @@
   setupAddButtons();
   initWelcomeVideo();
   // sidebar toggle
-  const rootWrap = document.querySelector('.root-wrap');
   const sidebarToggle = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('sidebar');
   sidebarToggle.addEventListener('click', () => {
-    rootWrap.classList.toggle('sidebar-closed');
+    sidebar.classList.toggle('open');
   });
 
   function setupAddButtons(){
@@ -991,7 +1026,7 @@
         const sec = DATA.sections[s]; const item = sec.items[i];
         addPlannerItem({ sectionId: sec.id, title: item.title[DATA.lang], desc: item.desc[DATA.lang] });
         // ensure sidebar visible on add (mobile-friendly)
-        rootWrap.classList.remove('sidebar-closed');
+        sidebar.classList.add('open');
         renderPlanner();
       });
     });
